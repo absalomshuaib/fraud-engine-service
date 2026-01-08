@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: fraud-mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: fraud_engine
+      MYSQL_USER: fraud_users
+      MYSQL_PASSWORD: StrongsPassword123
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysqldata:/var/lib/mysql
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  fraud-engine:
+    build: .
+    container_name: fraud-engine
+    depends_on:
+      - kafka
+      - mysql
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/fraud_engine?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: fraud_users
+      SPRING_DATASOURCE_PASSWORD: StrongsPassword123
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+volumes:
+  mysqldata:
+
