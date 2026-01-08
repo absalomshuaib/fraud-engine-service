@@ -19,7 +19,7 @@ import java.time.Instant;
 docker-compose -f kafka-compose.yml up -d
 
 (This is Johannesburg)
-curl -X POST http://localhost:8081/fraudengine/api/payments/initiate \
+curl -X POST http://localhost:8081/fraudengine/api/payments/initiatePayment \
 -H "Content-Type: application/json" \
 -d '{
   "transactionId": "TXN10001",
@@ -33,7 +33,7 @@ curl -X POST http://localhost:8081/fraudengine/api/payments/initiate \
 }'
 
 (This is Cape Town)
-curl -X POST http://localhost:8081/fraudengine/api/payments/initiate \
+curl -X POST http://localhost:8081/fraudengine/api/payments/initiatePayment \
 -H "Content-Type: application/json" \
 -d '{
   "transactionId": "TXN10002",
@@ -71,6 +71,18 @@ public class PaymentRestController {
 
         log.info("Initiating payment Fraud process");
         //Saves the payment data into the payment table as INITIATED
+
+        // Check if the transaction already exists
+        boolean exists = paymentRepository.findByTransactionId(request.getTransactionId()).isPresent();
+        if (exists) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(PaymentInitiatedResponse.builder()
+                            .status("ERROR")
+                            .message("TransactionId already found: " + request.getTransactionId())
+                            .transactionId(request.getTransactionId())
+                            .timestamp(request.getTimestamp())
+                            .build());
+        }
         Payment payment = new Payment();
         payment.setTransactionId(request.getTransactionId());
         payment.setClientId(request.getClientId());
@@ -143,11 +155,37 @@ public class PaymentRestController {
 
         return ResponseEntity.ok(response);
     }
-
+/*
+    curl -X POST http://localhost:8081/fraudengine/api/payments/initiatePaymentDecision \
+            -H "Content-Type: application/json" \
+            -d '{
+            "transactionId": "TXN10001111111",
+            "clientId": "C123",
+            "amount": 5000,
+            "merchantId": "M123",
+            "country": "ZA",
+            "timestamp": "2025-12-14T08:00:00Z",
+            "latitude": -26.2041,
+            "longitude": 28.0473
+}'
+/*
+ */
     //asych api approach to return the decision result from the fraud checks and make the payment on the payment service application
     @PostMapping("/initiatePaymentDecision")
     public ResponseEntity<PaymentDetailsResponse> initiatePaymentDecision(
             @RequestBody PaymentInitiatedRequest request) {
+
+        // Check if the transaction already exists
+        boolean exists = paymentRepository.findByTransactionId(request.getTransactionId()).isPresent();
+        if (exists) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(PaymentDetailsResponse.builder()
+                            .statusMessage("ERROR")
+                            .message("TransactionId already found: " + request.getTransactionId())
+                            .transactionId(request.getTransactionId())
+                            .timestamp(request.getTimestamp())
+                            .build());
+        }
 
         PaymentDecisionResult result = fraudService.evaluate(request);
 

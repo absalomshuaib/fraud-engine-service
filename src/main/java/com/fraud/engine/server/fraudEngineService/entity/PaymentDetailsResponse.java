@@ -29,4 +29,8 @@ public class PaymentDetailsResponse {
     private Instant lastUpdatedAt;
     private Integer riskScore;
     private List<String> reasons;
+    private String statusMessage;
+    private String message;
+    private Instant timestamp;
+
 }
