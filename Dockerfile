@@ -10,8 +10,6 @@ WORKDIR /app
 # Copy pom.xml first
 COPY pom.xml .
 
-# Copy any local JARs
-COPY libs ./libs
 # Copy any local JARs , remember this had an issue with unable to find mainclass exceptions
 COPY src ./src
 
